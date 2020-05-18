@@ -8,8 +8,76 @@ from optparse import OptionParser
 
 from clang.cindex import Index, TranslationUnit, CursorKind, TypeKind, Config
 
+
 # TODO: detect type parsing error. When clang cannot parse a type (of a function and parameter), it automatically casts
 #  it to int. How can we detect this situation and inform users to update their parsing_args?
+
+
+class GMockConfig:
+    def __init__(self, config_file_name):
+        with open(config_file_name, 'r') as file:
+            exec(file.read(), self._config)
+            self._mock_name = self._config['mock_name']
+            self._name_space = self._config['name_space']
+            self._mock_header_template = self._config['mock_header_template']
+            self._mock_cpp_template = self._config['mock_cpp_template']
+            self._stubs_file_template = self._config['stubs_file_template']
+            self._stub_function_template = self._config['stub_function_template']
+            self._header_output_path = self._config['header_output_path']
+            self._parsing_args = self._config['parsing_args']
+
+            # Se inferred variables from mockname
+            self._mock_instance_name = self._mock_name.lower() + "mock"
+            self._guard = "__" + self._mock_name.upper() + "_MOCK_HPP_"
+            self._mock_header_name = self._mock_name.lower() + "_mock.hpp"
+            self._mock_src_name = self._mock_name.lower() + "_mock.cpp"
+
+            # Add suffix to mockname. Note, mockname can no longer be used  to infer other variables
+            self._mock_name = self._mock_name + "Mock"
+
+    @property
+    def guard(self):
+        return self._guard
+
+    @property
+    def name_space(self):
+        return self._name_space
+
+    @property
+    def header_output_path(self):
+        return self._header_output_path
+
+    @property
+    def mock_name(self):
+        return self._mock_name
+
+    @property
+    def mock_header_template(self):
+        return self._mock_header_template
+
+    @property
+    def mock_cpp_template(self):
+        return self._mock_cpp_template
+
+    @property
+    def mock_instance_name(self):
+        return self._mock_instance_name
+
+    @property
+    def mock_header_name(self):
+        return self._mock_header_name
+
+    @property
+    def mock_src_name(self):
+        return self._mock_src_name
+
+    @property
+    def stubs_file_template(self):
+        return self._stubs_file_template
+
+    @property
+    def stub_function_template(self):
+        return self._stub_function_template
 
 
 class MockMethod:
@@ -46,16 +114,8 @@ class MockMethod:
 
 
 class Mock:
-    def __init__(self, name_space, mock_name, header_template, src_template, header_output_path):
-        self._mock_name = mock_name + "Mock"
-        self._name_space = name_space
-        self._header_template = header_template
-        self._src_template = src_template
-        self._header_output_path = header_output_path
-        self._mock_instance = mock_name.lower() + "mock"
-        self._guard = "__" + mock_name.upper() + "_MOCK_HPP_"
-        self._mock_header = mock_name.lower() + "_mock.hpp"
-        self._mock_src = mock_name.lower() + "_mock.cpp"
+    def __init__(self, config):
+        self._config = config
         self._mock_methods = []
         self._headers = []
 
@@ -69,12 +129,13 @@ class Mock:
     def write_header(self, path="./"):
         headers = "\n".join(self._headers)
         methods = "\n    ".join(self._mock_methods)
-        content = self._header_template % {'guard': self._guard, 'name_space': self._name_space,
-                                           'mock_name': self._mock_name, 'mock_instance': self._mock_instance,
+        content = self._header_template % {'guard': self._config.guard, 'name_space': self._config.name_space,
+                                           'mock_name': self._config.mock_name,
+                                           'mock_instance': self._config.mock_instance_name,
                                            'mock_methods': methods, 'header_files': headers,
                                            }
         # TODO: Remove this hard-code
-        real_path = path + '/inc/mocks/' + self._header_output_path
+        real_path = path + '/inc/mocks/' + self._config.header_output_path
         if not os.path.exists(real_path):
             os.makedirs(real_path)
 
@@ -82,10 +143,12 @@ class Mock:
             file.write(content)
 
     def write_src(self, path="./"):
-        content = self._src_template % {'name_space': self._name_space, 'mock_name': self._mock_name,
-                                        'mock_instance': self._mock_instance, 'mock_header': self._mock_header,
-                                        'header_output_path': self._header_output_path,
-                                        }
+        content = self._config.src_template % {'name_space': self._config.name_space,
+                                               'mock_name': self._config.mock_name,
+                                               'mock_instance': self._config.mock_instance_name,
+                                               'mock_header': self._config.mock_header_name,
+                                               'header_output_path': self._config.header_output_path,
+                                               }
 
         # TODO: Remove this hard-code
         real_path = path + '/src'
@@ -200,24 +263,11 @@ class StubsFile:
 
 
 class Generator:
-    def __init__(self, config_file, input_path):
-        self._config_file = config_file
+    def __init__(self, config, input_path):
+        self._config = config
         self._input_path = input_path
         self._stubs_list = []
-        self._config = {}
-
-        with open(self._config_file, 'r') as file:
-            exec(file.read(), self._config)
-            self._mock_name = self._config['mock_name']
-            self._name_space = self._config['name_space']
-            self._mock_header_template = self._config['mock_header_template']
-            self._mock_cpp_template = self._config['mock_cpp_template']
-            self._stubs_file_template = self._config['stubs_file_template']
-            self._stub_function_template = self._config['stub_function_template']
-            self._header_output_path = self._config['header_output_path']
-            self._mock = Mock(self._name_space, self._mock_name, self._mock_header_template, self._mock_cpp_template,
-                              self._header_output_path)
-            self._parsing_args = self._config['parsing_args']
+        self._mock = Mock(self._config)
 
     def parse(self):
         # A recursive function to parse all the nodes.
@@ -229,7 +279,7 @@ class Generator:
                 return
 
             if node.kind == CursorKind.FUNCTION_DECL:
-                stub_function = StubFunction(node, self._mock_name, self._stub_function_template)
+                stub_function = StubFunction(node, self._config.mock_name, self._config.stub_function_template)
                 mock_method = MockMethod(node)
                 self._mock.add_mock_method(str(mock_method))
                 stubs.append_stub_function(stub_function)
@@ -258,7 +308,7 @@ class Generator:
                               | TranslationUnit.PARSE_INCOMPLETE \
                               | TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD
 
-            parsing_args = self._parsing_args.split()
+            parsing_args = self._config.parsing_args.split()
             if os.path.isdir(self._input_path):
                 parsing_args.append("-I " + self._input_path)
 
@@ -303,7 +353,8 @@ def main(args):
     if options.libclang_path:
         Config.set_library_file(options.libclang)
 
-    gen = Generator(options.config_file, args[1])
+    config = GMockConfig(options.config_file)
+    gen = Generator(config, args[1])
     gen.parse()
     gen.write_mock_header(options.output_path)
     gen.write_mock_src(options.output_path)
