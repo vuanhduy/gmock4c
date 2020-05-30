@@ -1,12 +1,14 @@
 import os
-import sys
 import logging
+
+
+logger = logging.getLogger('gmock4c_application')
 
 
 class Config:
     def __init__(self, config_file_name):
         if not os.path.exists(config_file_name):
-            logging.critical(config_file_name, "(config file) is not found!!")
+            logger.critical(config_file_name, "(config file) is not found!!")
             exit(-1)
 
         self._config = {}

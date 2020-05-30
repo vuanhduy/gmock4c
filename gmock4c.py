@@ -7,6 +7,7 @@ import logging
 
 import clang.cindex as Clang
 
+
 def setup(args):
     default_libclang_path = ''
     if platform.system() == 'Linux':
@@ -42,8 +43,28 @@ def setup(args):
     return options
 
 
+def setup_logger():
+    # create logger with 'spam_application'
+    logger = logging.getLogger('gmock4c_application')
+    logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('gmock4c.log')
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
+
 if __name__ == "__main__":
     options = setup(sys.argv)
+    setup_logger()
 
     sys.path.append(os.path.dirname(__file__))
     import gmock4c.generator as GMock4C
@@ -53,4 +74,3 @@ if __name__ == "__main__":
     gen.write_mock_header(options.output_path)
     gen.write_mock_src(options.output_path)
     gen.write_stubs_src(options.output_path)
-

@@ -2,6 +2,9 @@ import os
 import logging
 
 
+logger = logging.getLogger('gmock4c_application')
+
+
 class MockMethod:
     template = """MOCK_METHOD%(num)d( %(method_name)s, %(result_type)s( %(parameters_with_types)s ) );"""
 
@@ -11,7 +14,7 @@ class MockMethod:
     def __str__(self):
         # NOTE: we cannot mock variadic functions
         if self._func.is_variadic:
-            logging.info(self._func.name, "is a variadic function")
+            logger.info(self._func.name, "is a variadic function")
             return ''
 
         method = MockMethod.template % {'num': len(self._func.arguments), 'method_name': self._func.name,
@@ -19,7 +22,7 @@ class MockMethod:
                                         'parameters_with_types': ', '.join([str(arg) for arg in self._func.arguments]),
                                         }
         method = method.replace("(  )", "()").replace(' *(', '*(').replace('* ', '*')
-        logging.info('Created a new mock: ', method)
+        logger.info('Created a new mock: ', method)
         return method
 
 
@@ -50,7 +53,7 @@ class Mock:
         if not os.path.exists(real_path):
             os.makedirs(real_path)
 
-        logging.info("Create a new mock header " + self._config.mock_header_name + " at " + real_path)
+        logger.info("Create a new mock header " + self._config.mock_header_name + " at " + real_path)
         with open(real_path + "/" + self._config.mock_header_name, "w") as file:
             file.write(content)
 
@@ -67,6 +70,6 @@ class Mock:
         if not os.path.exists(real_path):
             os.makedirs(real_path)
 
-        logging.info("Create a new mock source " + self._config.mock_src_name + " at " + real_path)
+        logger.info("Create a new mock source " + self._config.mock_src_name + " at " + real_path)
         with open(real_path + "/" + self._config.mock_src_name, "w") as file:
             file.write(content)

@@ -3,6 +3,9 @@ import collections
 import clang.cindex as Clang
 
 
+logger = logging.getLogger('gmock4c_application')
+
+
 class Argument(collections.namedtuple("Argument", ['type', 'name'])):
     __slot__ = ()
 
@@ -14,10 +17,10 @@ class Argument(collections.namedtuple("Argument", ['type', 'name'])):
 class Function:
     def __init__(self, cursor):
         if cursor.kind != Clang.CursorKind.FUNCTION_DECL:
-            logging.critical(cursor.spelling, " is not a function")
+            logger.critical(cursor.spelling, " is not a function")
             raise TypeError
 
-        logging.debug("Parsing function: ", cursor.spelling)
+        logger.debug("Parsing function: ", cursor.spelling)
         self._result_type = "void"
         self._name = cursor.spelling
         self._is_variadic = cursor.type.is_function_variadic()

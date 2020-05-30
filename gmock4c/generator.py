@@ -1,11 +1,15 @@
 import os
 import glob
+import logging
 
 import clang.cindex as Clang
 import gmock4c.config as GMockConfig
 import gmock4c.ast as GMockAST
 import gmock4c.stub as GMockStub
 import gmock4c.mock as GMock
+
+
+logger = logging.getLogger('gmock4c_application')
 
 
 class Generator:
@@ -44,6 +48,7 @@ class Generator:
 
         # Utilize clang to parse each file
         for f in files:
+            logger.info("Processing " + f)
             print("Processing ", f)
             if f == self._input_path:
                 self._mock.add_header(os.path.basename(f))

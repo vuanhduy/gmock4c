@@ -3,32 +3,19 @@ import re
 import logging
 
 
+logger = logging.getLogger('gmock4c_application')
+
+
 class StubFunction:
     def __init__(self, func, config):
-        logging.info('Creating stub for ' + func.name)
+        logger.info('Creating stub for ' + func.name)
         self._func = func
         self._config = config
         self._is_returnable = False if self._func.result_type == 'void' else True
 
-    # @property
-    # def result_type(self):
-    #     return self._result_type
-
     @property
     def name(self):
         return self._func.name
-
-    # @property
-    # def parameters(self):
-    #     return self._parameters
-
-    # @property
-    # def parameters_with_types(self):
-    #     return self._parameters_with_types
-
-    # @property
-    # def is_returnable(self):
-    #     return self._is_returnable
 
     @property
     def is_variadic(self):
@@ -63,12 +50,12 @@ class StubsFile:
 
     def write(self, path='./'):
         if len(self._functions) == 0:
-            return
+             return
 
         stubs = ""
         for f in self._functions:
             if f.is_variadic:
-                logging.info(f.name + " is a variadic function, so it should be managed manually")
+                logger.info(f.name + " is a variadic function, so it should be managed manually")
                 print("(!!!)", f.name, "is a variadic function, so it should be managed manually.")
             stubs += str(f)
 
